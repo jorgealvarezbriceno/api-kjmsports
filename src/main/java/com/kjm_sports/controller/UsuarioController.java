@@ -31,26 +31,28 @@ public class UsuarioController {
     public List<Usuario> listarUsuarios() {
         return usuarioRepository.findAll();
     }
-
-    // 2. POST: Crear nuevo usuario (Registro)
-    @PostMapping
-    public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
-        // Validaciones de unicidad
-        if (usuario.getEmail() != null && usuarioRepository.existsByEmail(usuario.getEmail())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya está registrado");
-        }
-        if (usuario.getTelefono() != null && usuarioRepository.existsByTelefono(usuario.getTelefono())) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body("Teléfono ya está registrado");
-        }
-        if (usuario.getRol() == null || usuario.getRol().isEmpty()) {
-            usuario.setRol("cliente"); 
-        }
-        // 🚨 ADVERTENCIA: Guarda la contraseña en texto plano
-        Usuario creado = usuarioRepository.save(usuario);
-        creado.setPassword(null);
-        return ResponseEntity.status(HttpStatus.CREATED).body(creado);
+// 2. POST: Crear nuevo usuario (Registro)
+@PostMapping
+public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
+    // Validaciones de unicidad
+    if (usuario.getEmail() != null && usuarioRepository.existsByEmail(usuario.getEmail())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("Email ya está registrado");
     }
-    
+    if (usuario.getTelefono() != null && usuarioRepository.existsByTelefono(usuario.getTelefono())) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("Teléfono ya está registrado");
+    }
+    if (usuario.getRol() == null || usuario.getRol().isEmpty()) {
+        usuario.setRol("cliente");
+    }
+
+    // --- ESTA ES LA LÍNEA CLAVE DE LA SOLUCIÓN ---
+    // Forzamos el ID a ser null para que Hibernate sepa que es un INSERT y no un UPDATE.
+    usuario.setId(null);
+
+    Usuario creado = usuarioRepository.save(usuario);
+    creado.setPassword(null);
+    return ResponseEntity.status(HttpStatus.CREATED).body(creado);
+}
     // 3. GET: Obtener usuario por ID
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> obtenerUsuario(@PathVariable Long id) {

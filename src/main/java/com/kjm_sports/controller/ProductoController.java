@@ -50,29 +50,33 @@ public class ProductoController {
         return productoRepository.findByCategoriaId(id);
     }
 
-    // --- MÉTODO "GUARDAR" CORREGIDO Y MÁS SEGURO ---
-    @PostMapping
-    public ResponseEntity<Producto> guardarProducto(@RequestBody Producto producto) {
-        // Validamos que el producto que nos llega tenga una categoría con un ID
-        if (producto.getCategoria() == null || producto.getCategoria().getId() == null) {
-            return ResponseEntity.badRequest().build(); // Error 400: Petición incorrecta
-        }
+   // --- MÉTODO "GUARDAR" CON LA CORRECCIÓN FINAL ---
+        @PostMapping
+        public ResponseEntity<Producto> guardarProducto(@RequestBody Producto producto) {
+            // Validamos que el producto que nos llega tenga una categoría con un ID
+            if (producto.getCategoria() == null || producto.getCategoria().getId() == null) {
+                return ResponseEntity.badRequest().build(); // Error 400: Petición incorrecta
+            }
 
-        // Buscamos en la base de datos si esa categoría realmente existe
-        Optional<Categoria> categoriaReal = categoriaRepository.findById(producto.getCategoria().getId());
+            // Buscamos en la base de datos si esa categoría realmente existe
+            Optional<Categoria> categoriaReal = categoriaRepository.findById(producto.getCategoria().getId());
 
-        if (!categoriaReal.isPresent()) {
-            // Si el ID de la categoría no existe, devolvemos un error
-            return ResponseEntity.badRequest().build();
+            if (!categoriaReal.isPresent()) {
+                // Si el ID de la categoría no existe, devolvemos un error
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // --- ESTA ES LA LÍNEA CLAVE DE LA SOLUCIÓN ---
+            // Forzamos el ID a ser null para que Hibernate sepa que es un INSERT y no un UPDATE.
+            producto.setId(null); 
+            
+            // Si todo está bien, asignamos la categoría real al producto y lo guardamos
+            producto.setCategoria(categoriaReal.get());
+            Producto productoGuardado = productoRepository.save(producto);
+            
+            // Devolvemos un 201 Created (éxito) con el producto recién creado
+            return ResponseEntity.status(HttpStatus.CREATED).body(productoGuardado);
         }
-        
-        // Si todo está bien, asignamos la categoría real al producto y lo guardamos
-        producto.setCategoria(categoriaReal.get());
-        Producto productoGuardado = productoRepository.save(producto);
-        
-        // Devolvemos un 201 Created (éxito) con el producto recién creado
-        return ResponseEntity.status(HttpStatus.CREATED).body(productoGuardado);
-    }
 
     // 4. PUT: Editar un producto (Método mejorado)
     @PutMapping("/{id}")
