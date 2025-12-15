@@ -10,17 +10,21 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import lombok.Data;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
-@Data // Esto crea los Getters y Setters automáticamente
-@Entity // Esto le dice a Spring: "Crea una tabla llamada Categoria en MySQL"
+@Getter // Crea solo los getters
+@Setter // Crea solo los setters
+@RequiredArgsConstructor // Crea un constructor
+@Entity
 public class Categoria {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // Auto-incremental
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nombre;       // Ej: "Zapatillas", "Ropa", "Accesorios"
+    private String nombre;
     private String descripcion;
 
     @JsonIgnore

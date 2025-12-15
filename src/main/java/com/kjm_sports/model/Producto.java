@@ -6,9 +6,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import lombok.Data;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
+@RequiredArgsConstructor
 @Entity
 public class Producto {
 
@@ -20,9 +24,8 @@ public class Producto {
     private String descripcion;
     private Double precio;
     private Integer stock;
-    private String imagenUrl; // CamelCase en Java se convierte a imagen_url en MySQL
+    private String imagenUrl;
 
-    // Relación: Muchos productos pueden tener una misma categoría
     @ManyToOne(optional = true)
     @JoinColumn(name = "categoria_id", nullable = true) 
     private Categoria categoria;

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus; // <-- ESTA ES LA IMPORTACIÓN QUE FALTABA
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -34,15 +35,20 @@ public class CategoriaController {
     @GetMapping("/{id}")
     public ResponseEntity<Categoria> obtenerCategoria(@PathVariable Long id) {
         Optional<Categoria> categoria = categoriaRepository.findById(id);
-        // Si existe, la devuelve (200 OK), si no, devuelve Error 404
         return categoria.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // 3. POST: Crear una nueva categoría
+    // 3. POST: Crear una nueva categoría (MÉTODO CORREGIDO)
     @PostMapping
-    public Categoria guardarCategoria(@RequestBody Categoria categoria) {
-        return categoriaRepository.save(categoria);
+    public ResponseEntity<Categoria> guardarCategoria(@RequestBody Categoria categoria) {
+        // Forzamos el ID a ser null para que Hibernate sepa que es un INSERT.
+        categoria.setId(null); 
+        
+        Categoria categoriaGuardada = categoriaRepository.save(categoria);
+        
+        // Devolvemos un código de estado 201 (CREATED), que es la práctica correcta.
+        return ResponseEntity.status(HttpStatus.CREATED).body(categoriaGuardada);
     }
 
     // 4. PUT: Actualizar una categoría existente
@@ -52,11 +58,9 @@ public class CategoriaController {
 
         if (categoriaOptional.isPresent()) {
             Categoria categoriaExistente = categoriaOptional.get();
-            // Actualizamos los datos
             categoriaExistente.setNombre(detallesCategoria.getNombre());
             categoriaExistente.setDescripcion(detallesCategoria.getDescripcion());
             
-            // Guardamos los cambios
             return ResponseEntity.ok(categoriaRepository.save(categoriaExistente));
         } else {
             return ResponseEntity.notFound().build();
@@ -68,9 +72,9 @@ public class CategoriaController {
     public ResponseEntity<Void> eliminarCategoria(@PathVariable Long id) {
         if (categoriaRepository.existsById(id)) {
             categoriaRepository.deleteById(id);
-            return ResponseEntity.ok().build(); // 200 OK
+            return ResponseEntity.ok().build(); 
         } else {
-            return ResponseEntity.notFound().build(); // 404 Not Found
+            return ResponseEntity.notFound().build(); 
         }
     }
 }
