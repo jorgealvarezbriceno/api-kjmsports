@@ -1,9 +1,14 @@
 package com.kjm_sports.controller;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.kjm_sports.model.Categoria;
 import com.kjm_sports.model.Producto;
 import com.kjm_sports.repository.CategoriaRepository;
+import com.kjm_sports.repository.DetalleBoletaRepository; // <-- IMPORTANTE
 import com.kjm_sports.repository.ProductoRepository;
 
 @RestController
@@ -27,17 +33,43 @@ public class ProductoController {
     @Autowired
     private ProductoRepository productoRepository;
 
-    // --- INYECTAMOS EL NUEVO REPOSITORIO ---
     @Autowired
     private CategoriaRepository categoriaRepository;
 
-    // 1. GET: Ver todos los productos
+    // --- INYECTAMOS EL NUEVO REPOSITORIO DE DETALLES ---
+    @Autowired
+    private DetalleBoletaRepository detalleBoletaRepository;
+
+    // --- MÉTODO PARA EL NUEVO REPORTE ---
+    @GetMapping("/top-selling")
+    public ResponseEntity<List<Producto>> getTopSellingProducts() {
+        // Le pedimos que nos devuelva solo los 5 productos más vendidos.
+        Pageable topFive = PageRequest.of(0, 5);
+        List<Long> topProductIds = detalleBoletaRepository.findTopSellingProductIds(topFive);
+
+        if (topProductIds.isEmpty()) {
+            return ResponseEntity.ok(new ArrayList<>()); // Devuelve lista vacía si no hay ventas
+        }
+
+        // Buscamos los detalles completos de los productos con los IDs que encontramos
+        List<Producto> topProducts = productoRepository.findAllById(topProductIds);
+
+        // Reordenamos la lista para que coincida con el orden de más a menos vendido
+        Map<Long, Producto> productMap = topProducts.stream().collect(Collectors.toMap(Producto::getId, p -> p));
+        List<Producto> sortedTopProducts = topProductIds.stream()
+                                                       .map(productMap::get)
+                                                       .collect(Collectors.toList());
+
+        return ResponseEntity.ok(sortedTopProducts);
+    }
+
+    // El resto de tus métodos GET, POST, PUT, DELETE se mantienen igual...
+    
     @GetMapping
     public List<Producto> listarProductos() {
         return productoRepository.findAll();
     }
 
-    // 2. GET: Buscar un producto por ID
     @GetMapping("/{id}")
     public ResponseEntity<Producto> obtenerProducto(@PathVariable Long id) {
         Optional<Producto> producto = productoRepository.findById(id);
@@ -50,63 +82,43 @@ public class ProductoController {
         return productoRepository.findByCategoriaId(id);
     }
 
-   // --- MÉTODO "GUARDAR" CON LA CORRECCIÓN FINAL ---
-        @PostMapping
-        public ResponseEntity<Producto> guardarProducto(@RequestBody Producto producto) {
-            // Validamos que el producto que nos llega tenga una categoría con un ID
-            if (producto.getCategoria() == null || producto.getCategoria().getId() == null) {
-                return ResponseEntity.badRequest().build(); // Error 400: Petición incorrecta
-            }
-
-            // Buscamos en la base de datos si esa categoría realmente existe
-            Optional<Categoria> categoriaReal = categoriaRepository.findById(producto.getCategoria().getId());
-
-            if (!categoriaReal.isPresent()) {
-                // Si el ID de la categoría no existe, devolvemos un error
-                return ResponseEntity.badRequest().build();
-            }
-            
-            // --- ESTA ES LA LÍNEA CLAVE DE LA SOLUCIÓN ---
-            // Forzamos el ID a ser null para que Hibernate sepa que es un INSERT y no un UPDATE.
-            producto.setId(null); 
-            
-            // Si todo está bien, asignamos la categoría real al producto y lo guardamos
-            producto.setCategoria(categoriaReal.get());
-            Producto productoGuardado = productoRepository.save(producto);
-            
-            // Devolvemos un 201 Created (éxito) con el producto recién creado
-            return ResponseEntity.status(HttpStatus.CREATED).body(productoGuardado);
+    @PostMapping
+    public ResponseEntity<Producto> guardarProducto(@RequestBody Producto producto) {
+        if (producto.getCategoria() == null || producto.getCategoria().getId() == null) {
+            return ResponseEntity.badRequest().build();
         }
+        Optional<Categoria> categoriaReal = categoriaRepository.findById(producto.getCategoria().getId());
+        if (!categoriaReal.isPresent()) {
+            return ResponseEntity.badRequest().build();
+        }
+        producto.setId(null);
+        producto.setCategoria(categoriaReal.get());
+        Producto productoGuardado = productoRepository.save(producto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(productoGuardado);
+    }
 
-    // 4. PUT: Editar un producto (Método mejorado)
     @PutMapping("/{id}")
     public ResponseEntity<Producto> actualizarProducto(@PathVariable Long id, @RequestBody Producto detalles) {
         Optional<Producto> productoOptional = productoRepository.findById(id);
-
         if (productoOptional.isPresent()) {
             Producto prodExistente = productoOptional.get();
-            
             prodExistente.setNombre(detalles.getNombre());
             prodExistente.setDescripcion(detalles.getDescripcion());
             prodExistente.setPrecio(detalles.getPrecio());
             prodExistente.setStock(detalles.getStock());
             prodExistente.setImagenUrl(detalles.getImagenUrl());
-            
-            // Hacemos la misma validación para la categoría al editar
             if (detalles.getCategoria() != null && detalles.getCategoria().getId() != null) {
                 Optional<Categoria> categoriaReal = categoriaRepository.findById(detalles.getCategoria().getId());
-                categoriaReal.ifPresent(prodExistente::setCategoria); // Si la categoría existe, la actualiza
+                categoriaReal.ifPresent(prodExistente::setCategoria);
             } else {
-                prodExistente.setCategoria(null); // Si no se envía categoría, la deja nula
+                prodExistente.setCategoria(null);
             }
-
             return ResponseEntity.ok(productoRepository.save(prodExistente));
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
-    // 5. DELETE: Borrar un producto
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarProducto(@PathVariable Long id) {
         if (productoRepository.existsById(id)) {
