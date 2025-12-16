@@ -2,7 +2,7 @@ package com.kjm_sports.model;
 
 import java.util.List;
 
-import com.fasterxml.jackson.annotation.JsonIgnore; // <-- Asegúrate de que esta importación esté presente
+import com.fasterxml.jackson.annotation.JsonIgnore; 
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,6 +12,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Data;
+import lombok.EqualsAndHashCode; 
+import lombok.ToString;
 
 @Data
 @Entity
@@ -26,6 +28,11 @@ public class Usuario {
     @Column(unique = true)
     private String email;
     
+    // 🔑 CORRECCIÓN CRÍTICA: 
+    // Excluimos la contraseña de los métodos de Lombok 
+    // para evitar conflictos al cargar la entidad desde la DB.
+    @ToString.Exclude 
+    @EqualsAndHashCode.Exclude 
     private String password;
     
     private String direccion;
@@ -35,9 +42,6 @@ public class Usuario {
     
     private String rol = "cliente"; 
 
-    // --- LA CORRECCIÓN CLAVE ESTÁ AQUÍ ---
-    // Se reemplaza @JsonIgnoreProperties por @JsonIgnore. 
-    // Esto rompe el bucle infinito al convertir el objeto a JSON para enviarlo a la app.
     @JsonIgnore 
     @OneToMany(mappedBy = "usuario")
     private List<Boleta> boletas;
