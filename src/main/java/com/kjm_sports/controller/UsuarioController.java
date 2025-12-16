@@ -62,24 +62,21 @@ public ResponseEntity<?> crearUsuario(@RequestBody Usuario usuario) {
     }
 
 
-    // --- 4. ENDPOINT DE LOGIN (Comparación de texto plano) ---
+   // --- 4. ENDPOINT DE LOGIN (Comparación de texto plano) ---
+
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> credenciales) {
         String email = credenciales.get("email");
         String password = credenciales.get("password");
-
         Optional<Usuario> usuarioOptional = usuarioRepository.findByEmail(email); 
-
         if (usuarioOptional.isPresent()) {
             Usuario usuario = usuarioOptional.get();
-            
-            if (usuario.getPassword() != null && usuario.getPassword().equals(password)) {
-                
+            // 🔑 CORRECCIÓN: Usar .trim() en el password de la DB antes de comparar
+            if (usuario.getPassword() != null && usuario.getPassword().trim().equals(password)) {
                 usuario.setPassword(null); // Ocultar la contraseña antes de devolver
                 return ResponseEntity.ok(usuario); // 200 OK: Login Exitoso
             }
         }
-        
             // Error 401: No autorizado (credenciales incorrectas o contraseña NULL)
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(java.util.Map.of("error", "Credenciales inválidas")); 
